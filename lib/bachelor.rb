@@ -1,89 +1,56 @@
 #!/usr/bin/env ruby
 
+# these 3 lines are here so I can run the program in my terminal
+# not needed for running 'learn', which supplies it's own input
+
 require 'json'
 file = File.read('./lib/contestants.json')
 contestants = JSON.parse(file)
-# p contestants
 
-def OLD_get_first_name_of_season_winner(data, season)
-  winner = ''
-  season_data = data.find { | key, value | key == season }  #returns the correct season
-  season_data[1].each do | person | #loops over the people - I'm not thrilled with that [1] ... is there a better way?
-    if person["status"] == "Winner"
-      winner = person["name"].split.first
-    end  
-  end
-  return winner    
-end 
+
+# helper method for flattening the main hash
+# allows for easier access to the inner nested data without a ton of eaching!
+# not all of my methods use this, but several do, so best to have it in its own method
+# when I know the season, I don't need to flatten, because the season is the key to the data inside
+# but if I don't have a season to use as a key, this method smashes down the door and knocks it flat!
+
+def flatdata(data)
+  data.values.flatten
+end
+
+# here I have the season, and I only need one winner, so .find is just the thing I need
 
 def get_first_name_of_season_winner(data, season)
-  winner = data[season].filter { | person | person["status"] == "Winner" }
-  winner[0]["name"].split.first
+  winner = data[season].find { | person | person["status"] == "Winner" } #returns the 1st (only) person with a winner status for a given season
+  winner["name"].split.first # returns the person name, using split.first to get only the part of th string before the first space
 end
 
-get_first_name_of_season_winner(contestants, "season 10")
-
-
-## better figure out how to use .map!
-
+# for this one, the occupation can be in any season, so hard to get at through all the nesting
+# the flatdata helper method flattens a layer of the nested structure
+# this means I can search for occupations without having to .each my way through the seasons
 
 def get_contestant_name(data, occupation)
-  contestant = ''
-  data.each do | season, season_data |
-    season_data.each do | person |
-      if person["occupation"] == occupation
-        contestant = person["name"]
-      end  
-    end 
-   end  
-  p contestant
-  return contestant  
+  worker = flatdata(data).find { | person | person["occupation"] == occupation }  #assigns the first person with the give occupation to the worker variable
+  worker["name"] #returns the worker's name
 end
 
-# get_contestant_name(contestants, "Cruise Ship Singer")
+# sooo simple to do when the structure is a little flatter!
 
 def count_contestants_by_hometown(data, hometown)
-  hometown_count = 0
-  data.each do | season, season_data |
-    season_data.each do | person |
-      if person["hometown"] == hometown
-        hometown_count += 1
-      end  
-    end 
-   end  
-  p hometown_count
-  return hometown_count 
+  flatdata(data).count { | person | person["hometown"] == hometown}  #counts all people in a given hometown
 end
 
-# count_contestants_by_hometown(contestants, "Hollywood, California")
+# basically the same as above, but uses find instead of count, so I can return the ["occupation"] value
 
 def get_occupation(data, hometown)
-  data.each do | season, season_data |
-    season_data.each do | person |
-      if person["hometown"] == hometown
-        p person["occupation"]
-        return person["occupation"]
-      end  
-    end
-  end  
+  resident = flatdata(data).find { | person | person["hometown"] == hometown}
+  resident["occupation"]
 end
 
-# get_occupation(contestants, "Cranston, Rhode Island" )
+# here again I have the season, so don't need to flatten!
 
 def get_average_age_for_season(data, season)
-  combined_age = 0
-  average_age = 0
-  season_data = data.find { | key, value | key == season }  #returns the correct season
-  season_data[1].each do | person |
-    combined_age += person["age"].to_i
-  end
-  # p combined_age
-  # p season_data[1].length
-  p (combined_age.to_f / season_data[1].length.to_f).round()
-  return (combined_age.to_f / season_data[1].length.to_f).round()
+  num_people = data[season].length  #uses length to calc the number of contestants in the season
+  combined_age = data[season].sum { | person | person["age"].to_i } #since ages are stored as strings, uses .to_i to convert to numbers, and .sum to total up
+  (combined_age.to_f / num_people.to_f).round() # to round properly, converts both integers to floats with .to_f, then .round() to go back to an integer
 end
-
-
-
-
-
